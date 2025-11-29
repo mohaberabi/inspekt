@@ -1,121 +1,30 @@
-# 📡 Inspekt
+# 🕵️‍♂️ Inspekt
 
-### A cross-platform HTTP inspector for Kotlin Multiplatform — like Chucker, but for Ktor.
+### The KMP-native HTTP Inspector for Ktor — elegant, minimal, and actually useful.
 
-**Inspekt** logs, decodes, stores, and visualizes every Ktor HTTP request & response on **Android**
-and **iOS**.  
-It requires **no Swift**, **no extra setup**, and includes a full inspector UI built with **Compose
-Multiplatform**.
+**Inspekt** gives you full visibility into your **Ktor** network calls on **Android** and **iOS**.
 
----
+- Real‑time HTTP logging
+- Pretty JSON viewing
+- Request/response size, SSL flag, metadata
+- In‑app inspector UI (Compose)
+- Notifications
+- App Shortcuts
+- Room KMP persistence
+- Optional body decoders (for encrypted/protobuf bodies)
 
-## 🚀 Features
+It feels like Chucker — but built *properly* for Kotlin Multiplatform.
 
-### ✅ Full Ktor HTTP Logging
+# ⚙️ Setup (Android + iOS)
 
-Inspekt automatically logs:
-
-- Request & response bodies
-- Headers
-- Status code
-- Duration
-- Endpoint & method
-- Content type, charset, content length
-- Request/response size (bytes)
-- SSL detection
-- Pretty printed JSON
-- Custom body decoding (encrypted/protobuf/etc.)
-
----
-
-### 🖥 In-App Inspector UI (Android & iOS)
-
-#### **Android**
-
-- Opens a dedicated `InspektActivity`
-- Accessible via:
-    - Notification tap
-    - Dynamic shortcuts
-    - Launcher shortcut
-
-#### **iOS**
-
-- Opens as a separate floating `UIWindow`
-- Activated via:
-    - Notification click
-    - App Shortcut
-- Implemented 100% in Kotlin — **no Swift required**
-
----
-
-### 🔔 Real-Time Notifications
-
-Each HTTP call can trigger a configurable notification.
+Call:
 
 ```kotlin
-notificationManager.showLocalNotification(
-    title = entry.url,
-    body = "Logged call: ${entry.statusCode}",
-    id = entry.id.hashCode(),
-    config = NotificationConfig(...
-)
-)
+GlobalInspekt.configure(InspektConfig(/* Android: pass context */))
+/* or even use the no implementation instance in case u don't want to ship it */
 ```
 
----
-
-### 📦 KMP Room Database
-
-Every request and response is persisted with **Room KMP**, enabling:
-
-- Complete offline history
-- Paging support
-- Searching/filtering (optional)
-- Custom retention policies
-
----
-
-### 🧩 Pluggable Body Decoders
-
-Decode encrypted, protobuf, or custom formats:
-
-```kotlin
-InspektConfig(
-    requestBodyDecoder = { entry, rawBytes ->
-        myDecrypter.decode(rawBytes)
-    },
-    responseBodyDecoder = { entry, rawBytes ->
-        myProtobufParser.parse(rawBytes)
-    }
-)
-```
-
-If the decoder returns `null`, Inspekt falls back to:
-
-- Pretty JSON
-- Plain text
-- `<streaming body>` fallback
-
----
-
-## 🛠 Setup
-
-### 1. Configure Inspekt
-
-```kotlin
-GlobalInspekt.configure(
-    InspektConfig(
-        // Android: pass context
-        // iOS: no args
-    )
-)
-```
-
-Must be called **once** on startup.
-
----
-
-### 2. Install Ktor Plugin
+Then install the plugin:
 
 ```kotlin
 val client = HttpClient {
@@ -123,48 +32,179 @@ val client = HttpClient {
 }
 ```
 
-That's it. All calls are logged.
+Done.  
+Every request and response is now captured.
 
 ---
 
-## 🔍 Using the Inspector UI
+# 📡 What Inspekt Logs
+
+### Request:
+
+- URL
+- Endpoint
+- Method
+- Headers
+- Content‑Type / Charset
+- SSL detection
+- Body (decoded or raw)
+- Size
+- Timestamp
+
+### Response:
+
+- Status code
+- Headers
+- Body
+- Duration
+- Size
+- Content‑Type
+- Errors
+
+All stored in Room KMP automatically.
+
+---
+
+# 🔐 Optional: Body Decoding (Encrypted / Protobuf / Custom)
+
+You can decode them like:
+
+```kotlin
+InspektConfig(
+    requestBodyDecoder = { entry, raw ->
+        myDecrypter.decrypt(raw)
+    },
+    responseBodyDecoder = { entry, raw ->
+        myProtobufParser.parse(raw)
+    }
+)
+```
+
+# 🕰 Real‑Time Notifications
+
+Every logged call sends a notification (configurable).  
+Tap → inspector UI opens.
 
 ### Android
 
-```kotlin
-context.startActivity(Intent(context, InspektActivity::class.java))
-```
+Uses NotificationManager + PendingIntent.
 
 ### iOS
 
+Uses UNUserNotificationCenter and a floating UIWindow.
+
+You can customize the payload via:
+
 ```kotlin
-InspektViewControllerPresenter.show()
+NotificationConfigProvider {
+    NotificationConfig(userInfo = mapOf("inspekt" to true))
+}
 ```
 
 ---
 
-## 🧱 Architecture Overview
+# ⚡ Shortcuts (Quick Launch)
 
-```
-┌──────────────────────────────────────────────┐
-│                 InspektPlugin                │
-│   (Ktor request/response interceptor)        │
-└──────────────────────────────────────────────┘
-               │                │
-               ▼                ▼
-      Extract request       Extract response
-        + raw bytes            + raw bytes
-               │                │
-               └─────── Decode via user  ───────┐
-                       (optional)               │
-                                                ▼
-                                          PreProcessing
-                                                ▼
-                                       Persist in Room KMP
-                                                ▼
-                                        Notify via manager
-                                                ▼
-                                       View in Compose UI
-```
+### Android
+
+Inspekt adds:
+
+- Dynamic Shortcut
+
+Shortcut opens the Inspector Activity.
+
+### iOS
+
+Inspekt adds an App Shortcut:  
+Tap → opens the floating inspector window.
+
+Zero Swift.
 
 ---
+
+# 🗂 Storage — Powered by Room KMP
+
+All entries are saved automatically:
+
+- can be toggled inside configuration when initialized
+- Works offline
+
+---
+
+# 🖥 Inspector UI (Compose Multiplatform)
+
+One UI for both platforms.
+
+### Android
+
+A standalone Activity (`InspektActivity`).
+
+### iOS
+
+A separate `UIWindow` on top of your app  
+(movable, dismissible, non-invasive).
+
+### Includes:
+
+- List of calls
+- Detail screen
+- Pretty JSON
+- Copy / Share options
+- Sizes, timing, headers
+- Status color coding
+
+---
+
+# 🔌 Ktor Integration — Clean & Efficient
+
+Inspekt hooks into:
+
+### On Request
+
+Captures:
+
+- URL
+- Headers
+- Metadata
+- Body (via raw extraction)
+- Timestamp
+
+### On Response
+
+Reads the channel **once**, clones it, then logs and forwards it safely.
+
+Works with all content types and large bodies.
+
+---
+
+# 🔍 How Request Bodies Are Captured
+
+Inspekt reads raw body content via:
+
+- `String`
+- `ByteArray`
+- `OutgoingContent.*`
+- Fallback to `.toString()`
+
+Streaming bodies produce `" <streaming body> "`  
+unless you decode them manually.
+
+---
+
+# 🔍 How Response Bodies Are Captured
+
+Inspekt uses:
+
+```kotlin
+val bytes = channel.readRemaining().readByteArray()
+val newCall = call.replaceResponse { ByteReadChannel(bytes) }
+```
+
+So:
+
+- Body is logged
+- Body is still readable by the app
+- No double‑receive problem
+
+---
+
