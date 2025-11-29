@@ -1,35 +1,170 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# 📡 Inspekt
 
-* [/composeApp](./composeApp/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./composeApp/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./composeApp/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./composeApp/src/jvmMain/kotlin)
-    folder is the appropriate location.
+### A cross-platform HTTP inspector for Kotlin Multiplatform — like Chucker, but for Ktor.
 
-* [/iosApp](./iosApp/iosApp) contains iOS applications. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
-
-### Build and Run Android Application
-
-To build and run the development version of the Android app, use the run configuration from the run widget
-in your IDE’s toolbar or build it directly from the terminal:
-- on macOS/Linux
-  ```shell
-  ./gradlew :composeApp:assembleDebug
-  ```
-- on Windows
-  ```shell
-  .\gradlew.bat :composeApp:assembleDebug
-  ```
-
-### Build and Run iOS Application
-
-To build and run the development version of the iOS app, use the run configuration from the run widget
-in your IDE’s toolbar or open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+**Inspekt** logs, decodes, stores, and visualizes every Ktor HTTP request & response on **Android**
+and **iOS**.  
+It requires **no Swift**, **no extra setup**, and includes a full inspector UI built with **Compose
+Multiplatform**.
 
 ---
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+## 🚀 Features
+
+### ✅ Full Ktor HTTP Logging
+
+Inspekt automatically logs:
+
+- Request & response bodies
+- Headers
+- Status code
+- Duration
+- Endpoint & method
+- Content type, charset, content length
+- Request/response size (bytes)
+- SSL detection
+- Pretty printed JSON
+- Custom body decoding (encrypted/protobuf/etc.)
+
+---
+
+### 🖥 In-App Inspector UI (Android & iOS)
+
+#### **Android**
+
+- Opens a dedicated `InspektActivity`
+- Accessible via:
+    - Notification tap
+    - Dynamic shortcuts
+    - Launcher shortcut
+
+#### **iOS**
+
+- Opens as a separate floating `UIWindow`
+- Activated via:
+    - Notification click
+    - App Shortcut
+- Implemented 100% in Kotlin — **no Swift required**
+
+---
+
+### 🔔 Real-Time Notifications
+
+Each HTTP call can trigger a configurable notification.
+
+```kotlin
+notificationManager.showLocalNotification(
+    title = entry.url,
+    body = "Logged call: ${entry.statusCode}",
+    id = entry.id.hashCode(),
+    config = NotificationConfig(...
+)
+)
+```
+
+---
+
+### 📦 KMP Room Database
+
+Every request and response is persisted with **Room KMP**, enabling:
+
+- Complete offline history
+- Paging support
+- Searching/filtering (optional)
+- Custom retention policies
+
+---
+
+### 🧩 Pluggable Body Decoders
+
+Decode encrypted, protobuf, or custom formats:
+
+```kotlin
+InspektConfig(
+    requestBodyDecoder = { entry, rawBytes ->
+        myDecrypter.decode(rawBytes)
+    },
+    responseBodyDecoder = { entry, rawBytes ->
+        myProtobufParser.parse(rawBytes)
+    }
+)
+```
+
+If the decoder returns `null`, Inspekt falls back to:
+
+- Pretty JSON
+- Plain text
+- `<streaming body>` fallback
+
+---
+
+## 🛠 Setup
+
+### 1. Configure Inspekt
+
+```kotlin
+GlobalInspekt.configure(
+    InspektConfig(
+        // Android: pass context
+        // iOS: no args
+    )
+)
+```
+
+Must be called **once** on startup.
+
+---
+
+### 2. Install Ktor Plugin
+
+```kotlin
+val client = HttpClient {
+    install(InspektPlugin())
+}
+```
+
+That's it. All calls are logged.
+
+---
+
+## 🔍 Using the Inspector UI
+
+### Android
+
+```kotlin
+context.startActivity(Intent(context, InspektActivity::class.java))
+```
+
+### iOS
+
+```kotlin
+InspektViewControllerPresenter.show()
+```
+
+---
+
+## 🧱 Architecture Overview
+
+```
+┌──────────────────────────────────────────────┐
+│                 InspektPlugin                │
+│   (Ktor request/response interceptor)        │
+└──────────────────────────────────────────────┘
+               │                │
+               ▼                ▼
+      Extract request       Extract response
+        + raw bytes            + raw bytes
+               │                │
+               └─────── Decode via user  ───────┐
+                       (optional)               │
+                                                ▼
+                                          PreProcessing
+                                                ▼
+                                       Persist in Room KMP
+                                                ▼
+                                        Notify via manager
+                                                ▼
+                                       View in Compose UI
+```
+
+---
